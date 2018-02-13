@@ -26,6 +26,28 @@ val p1 = project {
 }
 
 val p2 = project {
+    name = "diff-dispatcher-annotations"
+    group = "com.dimsuz"
+    artifactId = name
+    version = "0.1"
+
+    directory = "annotations"
+
+
+    dependencies {
+        compile("org.jetbrains.kotlin:kotlin-runtime:$kotlinVersion")
+        compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
+    }
+
+    assemble {
+        jar {
+
+        }
+    }
+
+}
+
+val p3 = project {
     name = "diff-dispatcher-sample"
     group = "com.dimsuz"
     artifactId = name
@@ -45,5 +67,4 @@ val p2 = project {
     application {
         mainClass = "com.dimsuz.diffdispatcher.sample.MainKt"
     }
-
 }
