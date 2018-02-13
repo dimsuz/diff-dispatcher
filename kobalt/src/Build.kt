@@ -1,22 +1,40 @@
 import com.beust.kobalt.*
 import com.beust.kobalt.plugin.packaging.*
 import com.beust.kobalt.plugin.application.*
-import com.beust.kobalt.plugin.kotlin.*
 
-val p = project {
-    name = "diff-dispatcher"
-    group = "com.example"
+const val kotlinVersion = "1.2.10"
+
+val p1 = project {
+    name = "diff-dispatcher-processor"
+    group = "com.dimsuz"
     artifactId = name
     version = "0.1"
 
+    directory = "processor"
+
+
     dependencies {
-//        compile("com.beust:jcommander:1.68")
-        compile("org.jetbrains.kotlin:kotlin-runtime:1.2.21")
-        compile("org.jetbrains.kotlin:kotlin-stdlib:1.2.21")
+        compile("org.jetbrains.kotlin:kotlin-runtime:$kotlinVersion")
+        compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     }
 
-    dependenciesTest {
-        compile("org.testng:testng:6.11")
+    assemble {
+        jar {
+
+        }
+    }
+}
+
+val p2 = project {
+    name = "diff-dispatcher-sample"
+    group = "com.dimsuz"
+    artifactId = name
+    version = "0.1"
+    directory = "sample"
+
+    dependencies {
+        compile("org.jetbrains.kotlin:kotlin-runtime:$kotlinVersion")
+        compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     }
 
     assemble {
@@ -25,6 +43,7 @@ val p = project {
     }
 
     application {
-        mainClass = "com.example.MainKt"
+        mainClass = "com.dimsuz.diffdispatcher.sample.MainKt"
     }
+
 }
