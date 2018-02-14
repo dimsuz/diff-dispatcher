@@ -4,7 +4,27 @@ import com.beust.kobalt.plugin.application.*
 
 const val kotlinVersion = "1.2.10"
 
-val p1 = project {
+val projectAnnotations = project {
+    name = "diff-dispatcher-annotations"
+    group = "com.dimsuz"
+    artifactId = name
+    version = "0.1"
+
+    directory = "annotations"
+
+
+    dependencies {
+    }
+
+    assemble {
+        jar {
+
+        }
+    }
+
+}
+
+val projectProcessor = project(projectAnnotations) {
     name = "diff-dispatcher-processor"
     group = "com.dimsuz"
     artifactId = name
@@ -25,29 +45,7 @@ val p1 = project {
     }
 }
 
-val p2 = project {
-    name = "diff-dispatcher-annotations"
-    group = "com.dimsuz"
-    artifactId = name
-    version = "0.1"
-
-    directory = "annotations"
-
-
-    dependencies {
-        compile("org.jetbrains.kotlin:kotlin-runtime:$kotlinVersion")
-        compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
-    }
-
-    assemble {
-        jar {
-
-        }
-    }
-
-}
-
-val p3 = project {
+val projectSample = project(projectAnnotations) {
     name = "diff-dispatcher-sample"
     group = "com.dimsuz"
     artifactId = name

@@ -1,7 +1,9 @@
 package com.dimsuz.diffdispatcher.sample
 
+import com.dimsuz.diffdispatcher.annotations.DiffElement
 import com.dimsuz.diffdispatcher.sample.UserInfoViewState.Interest
 
+@DiffElement(diffReceiver = UserInfoRenderer::class)
 data class UserInfoViewState(
     val firstName: String,
     val lastName: String,
