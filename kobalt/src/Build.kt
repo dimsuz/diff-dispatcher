@@ -1,6 +1,7 @@
 import com.beust.kobalt.*
 import com.beust.kobalt.plugin.packaging.*
 import com.beust.kobalt.plugin.application.*
+import com.beust.kobalt.plugin.apt.kapt
 
 const val kotlinVersion = "1.2.10"
 
@@ -64,5 +65,8 @@ val projectSample = project(projectAnnotations) {
 
     application {
         mainClass = "com.dimsuz.diffdispatcher.sample.MainKt"
+    }
+
+    kapt {
     }
 }
