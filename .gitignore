@@ -1,5 +1,6 @@
 .idea/*
 *.iml
 .kobalt/
+.gradle/
 kobaltBuild/
 out
