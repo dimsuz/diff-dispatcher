@@ -5,10 +5,10 @@ import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.TypeElement
+import javax.lang.model.element.*
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Types
+import kotlin.math.log
 
 private const val RECEIVER_PARAMETER_NAME = "diffReceiver"
 
@@ -43,13 +43,62 @@ class Processor : AbstractProcessor() {
             val targetElement = element as TypeElement
             val receiverElement = getReceiverElement(targetElement) ?: return true // error should already be printed
 
+
             checkHasHashCodeEquals(targetElement)
-//            targetElement.enclosedElements.forEach {
-//                logger.note(it.simpleName.toString() + ", " + it.kind)
-//            }
+            targetElement.enclosedElements.forEach {
+                logger.note(it.simpleName.toString() + ", " + it.kind)
+            }
+
+            val targetFields = targetElement.enclosedFields.map { TargetField(it) }
+
+            // TODO describe why need custom fold/grouping (because need to use isSameType)
+            // receiver interface method parameters grouped by method they belong to
+            val receiverFields = receiverElement.enclosedMethods
+                .flatMap { method -> method.parameters.map { param -> param to method } }
+                .fold(mutableMapOf<TargetField, MutableList<ExecutableElement>>(), { acc, (param, method) ->
+                    val key = acc.keys
+                        .find { it.name == param.simpleName.toString() && typeUtils.isSameType(it.type, param.asType()) }
+                        ?: TargetField(param)
+                    val methods = acc[key] ?: mutableListOf()
+                    val add = methods.isEmpty()
+                    methods.add(method)
+                    if (add) {
+                        acc[key] = methods
+                    }
+                    acc
+                })
+
+            logger.note(receiverFields.toString())
+
+            if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverFields)) {
+                return true
+            }
+
+            logger.note(receiverFields.toString())
         }
 
         return true
+    }
+
+    private fun checkTargetHasFieldsRequestedByReceiver(
+        targetFields: List<TargetField>,
+        receiverFields: Map<TargetField, List<ExecutableElement>>
+    ) : Boolean {
+        // TODO also do strict checking for nullability? both target and receiver nullability must match?
+        val missing = receiverFields
+            .filterKeys { receiverField ->
+                targetFields.none { it.name == receiverField.name && typeUtils.isSameType(it.type, receiverField.type) }
+            }
+        for ((argName, methods) in missing) {
+            // TODO log it like "ReceiverClassName contains a field name missing from TargetClassName:...."
+            for (method in methods) {
+                logger.error("diffReceiver method contains field missing from diff element class")
+                logger.error("  method: $method")
+                logger.error("  field: ${argName.name}")
+                logger.error("  fieldType: ${argName.type}")
+            }
+        }
+        return missing.isEmpty()
     }
 
     private fun getReceiverElement(targetElement: TypeElement): TypeElement? {
@@ -85,8 +134,17 @@ class Processor : AbstractProcessor() {
 
 }
 
+private data class TargetField(
+    val name: String,
+    val type: TypeMirror
+) {
+    constructor(element: VariableElement) : this(element.simpleName.toString(), element.asType())
+    constructor(element: ExecutableElement) : this(element.simpleName.toString(), element.asType())
+}
+
 private fun hasHashCodeEquals(typeElement: TypeElement): Boolean {
     val enclosedElements = typeElement.enclosedElements
     return enclosedElements.any { it.kind == ElementKind.METHOD && it.simpleName.toString() == "equals" }
         && enclosedElements.any { it.kind == ElementKind.METHOD && it.simpleName.toString() == "hashCode" }
 }
+

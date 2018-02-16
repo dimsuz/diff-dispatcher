@@ -26,10 +26,14 @@ data class UserInfoViewState(
 
 interface UserInfoRenderer {
     fun renderName(firstName: String, middleName: String?, lastName: String)
+    fun renderFirstName(firstName: String)
     fun renderUserAddress(address: UserInfoViewState.Address)
     fun renderFriends(friends: List<UserInfoViewState>)
     fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>)
     fun renderPopularity(popularity: Float)
+//    fun fault(isIntelligent: Int)
+//    fun fault(popularity: Long)
+//    fun fault1(popularity: List<String>)
 }
 
 interface UserInfoRenderDispatcher {
@@ -37,8 +41,13 @@ interface UserInfoRenderDispatcher {
 }
 
 class SampleRenderer : UserInfoRenderer {
+
     override fun renderName(firstName: String, middleName: String?, lastName: String) {
         println("rendering name $lastName $firstName $middleName")
+    }
+
+    override fun renderFirstName(firstName: String) {
+        println("rendering first name $firstName")
     }
 
     override fun renderUserAddress(address: UserInfoViewState.Address) {
