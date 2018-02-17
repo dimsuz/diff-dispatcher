@@ -60,7 +60,8 @@ class Processor : AbstractProcessor() {
                 return true
             }
 
-            generateDispatcherInterface(targetElement)
+            val dispatcherTypeSpec = generateDispatcherInterface(targetElement)
+            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverFields)
         }
 
         return true
@@ -85,6 +86,72 @@ class Processor : AbstractProcessor() {
         JavaFile.builder(targetElement.enclosingPackageName, typeSpec)
             .build()
             .writeTo(filer)
+        return typeSpec
+    }
+
+    private fun generateDispatcher(
+        superInterface: TypeSpec,
+        targetElement: TypeElement,
+        receiverElement: TypeElement,
+        receiverFields: Map<TargetField, List<ExecutableElement>>
+    ) {
+        val packageName = targetElement.enclosingPackageName
+        val dispatchMethodSpec = superInterface.methodSpecs.single()
+        val constructorSpec = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(TypeName.get(receiverElement.asType()), "receiver")
+            .addStatement("this.\$N = \$N", "receiver", "receiver")
+            .build()
+
+        val typeSpec = TypeSpec.classBuilder("${superInterface.name}_Generated")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(
+                ClassName.get(packageName, superInterface.name))
+            .addField(TypeName.get(receiverElement.asType()), "receiver", Modifier.PRIVATE, Modifier.FINAL)
+            .addMethod(constructorSpec)
+            .addMethod(dispatchMethodSpec.override()
+                .addCode(generateDispatcherStatements(
+                    dispatchMethodSpec.parameters[0],
+                    dispatchMethodSpec.parameters[1],
+                    receiverElement,
+                    receiverFields)).build())
+            .build()
+
+        JavaFile.builder(packageName, typeSpec)
+            .build()
+            .writeTo(filer)
+    }
+
+    private fun generateDispatcherStatements(
+        newStateArgSpec: ParameterSpec,
+        prevStateArgSpec: ParameterSpec,
+        receiverElement: TypeElement,
+        // TODO rename receiverParameters
+        receiverFields: Map<TargetField, List<ExecutableElement>>): CodeBlock {
+
+        val elem = receiverElement.enclosedMethods.first()
+//        val parameters = elem.parameters.forEach { logger.note(it.toString()) }
+
+        return CodeBlock.builder()
+            .beginControlFlow("if (\$N == null)", prevStateArgSpec)
+            .apply {
+                receiverElement.enclosedMethods.map { generateDispatchCallStatement(newStateArgSpec, it) }
+                    .forEach { addStatement(it) }
+            }
+            .endControlFlow()
+            .beginControlFlow("else")
+            .endControlFlow()
+            .build()
+    }
+
+    private fun generateDispatchCallStatement(stateArgSpec: ParameterSpec, element: ExecutableElement): CodeBlock {
+        return CodeBlock.of(
+            "receiver.\$N(\$N)",
+            element.simpleName,
+            element.parameters.joinToString(", ", transform = {
+                "${stateArgSpec.name}.get${it.simpleName.toString().capitalize()}()"
+            })
+        )
     }
 
     private fun getReceiverFields(
@@ -175,3 +242,17 @@ private fun hasHashCodeEquals(typeElement: TypeElement): Boolean {
         && enclosedElements.any { it.kind == ElementKind.METHOD && it.simpleName.toString() == "hashCode" }
 }
 
+/**
+ * Returns a method spec builder which overrides an interface method
+ */
+private fun MethodSpec.override(): MethodSpec.Builder {
+    return MethodSpec.methodBuilder(this.name)
+        .addJavadoc(this.javadoc)
+        .addAnnotations(this.annotations)
+        .addAnnotation(Override::class.java)
+        .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+        .returns(this.returnType)
+        .addTypeVariables(this.typeVariables)
+        .addParameters(this.parameters)
+        .addExceptions(this.exceptions)
+}
