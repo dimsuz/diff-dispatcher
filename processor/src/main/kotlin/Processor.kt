@@ -48,9 +48,9 @@ class Processor : AbstractProcessor() {
             val receiverElement = getReceiverElement(targetElement) ?: return true // error should already be printed
 
             checkHasHashCodeEquals(targetElement)
-            targetElement.enclosedElements.forEach {
-                logger.note(it.simpleName.toString() + ", " + it.kind)
-            }
+//            targetElement.enclosedElements.forEach {
+//                logger.note(it.simpleName.toString() + ", " + it.kind)
+//            }
 
             val targetFields = targetElement.enclosedFields.map { TargetField(it) }
             // receiver interface method parameters grouped by method they belong to
