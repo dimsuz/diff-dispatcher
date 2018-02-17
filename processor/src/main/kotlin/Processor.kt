@@ -68,13 +68,9 @@ class Processor : AbstractProcessor() {
                     acc
                 })
 
-            logger.note(receiverFields.toString())
-
             if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverFields)) {
                 return true
             }
-
-            logger.note(receiverFields.toString())
         }
 
         return true
