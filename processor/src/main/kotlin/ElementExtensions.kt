@@ -25,3 +25,5 @@ internal val Element.enclosingPackage: PackageElement
         }
         return (enclosing as? PackageElement) ?: throw IllegalStateException("no package element found")
     }
+
+internal val Element.enclosingPackageName get() = enclosingPackage.qualifiedName.toString()

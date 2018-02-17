@@ -66,23 +66,23 @@ class Processor : AbstractProcessor() {
         return true
     }
 
-    private fun generateDispatcherInterface(targetElement: TypeElement) {
-        val typeName = TypeName.get(targetElement.asType())
+    private fun generateDispatcherInterface(targetElement: TypeElement): TypeSpec {
+        val targetTypeName = TypeName.get(targetElement.asType())
         val typeSpec = TypeSpec.interfaceBuilder("${targetElement.simpleName}DiffDispatcher")
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodSpec.methodBuilder("dispatch")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .addParameter(ParameterSpec.builder(typeName, "newState")
+                .addParameter(ParameterSpec.builder(targetTypeName, "newState")
                     .addAnnotation(Nonnull::class.java)
                     .build())
-                .addParameter(ParameterSpec.builder(typeName, "previousState")
+                .addParameter(ParameterSpec.builder(targetTypeName, "previousState")
                     .addAnnotation(Nullable::class.java)
                     .build())
                 .build()
             )
             .build()
 
-        JavaFile.builder(targetElement.enclosingPackage.qualifiedName.toString(), typeSpec)
+        JavaFile.builder(targetElement.enclosingPackageName, typeSpec)
             .build()
             .writeTo(filer)
     }
