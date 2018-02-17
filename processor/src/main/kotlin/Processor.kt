@@ -43,30 +43,14 @@ class Processor : AbstractProcessor() {
             val targetElement = element as TypeElement
             val receiverElement = getReceiverElement(targetElement) ?: return true // error should already be printed
 
-
             checkHasHashCodeEquals(targetElement)
             targetElement.enclosedElements.forEach {
                 logger.note(it.simpleName.toString() + ", " + it.kind)
             }
 
             val targetFields = targetElement.enclosedFields.map { TargetField(it) }
-
-            // TODO describe why need custom fold/grouping (because need to use isSameType)
             // receiver interface method parameters grouped by method they belong to
-            val receiverFields = receiverElement.enclosedMethods
-                .flatMap { method -> method.parameters.map { param -> param to method } }
-                .fold(mutableMapOf<TargetField, MutableList<ExecutableElement>>(), { acc, (param, method) ->
-                    val key = acc.keys
-                        .find { it.name == param.simpleName.toString() && typeUtils.isSameType(it.type, param.asType()) }
-                        ?: TargetField(param)
-                    val methods = acc[key] ?: mutableListOf()
-                    val add = methods.isEmpty()
-                    methods.add(method)
-                    if (add) {
-                        acc[key] = methods
-                    }
-                    acc
-                })
+            val receiverFields = getReceiverFields(receiverElement)
 
             if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverFields)) {
                 return true
@@ -74,6 +58,26 @@ class Processor : AbstractProcessor() {
         }
 
         return true
+    }
+
+    private fun getReceiverFields(
+        receiverElement: TypeElement
+    ): MutableMap<TargetField, MutableList<ExecutableElement>> {
+        // TODO describe why need custom fold/grouping (because need to use isSameType)
+        return receiverElement.enclosedMethods
+            .flatMap { method -> method.parameters.map { param -> param to method } }
+            .fold(mutableMapOf(), { acc, (param, method) ->
+                val key = acc.keys
+                    .find { it.name == param.simpleName.toString() && typeUtils.isSameType(it.type, param.asType()) }
+                    ?: TargetField(param)
+                val methods = acc[key] ?: mutableListOf()
+                val add = methods.isEmpty()
+                methods.add(method)
+                if (add) {
+                    acc[key] = methods
+                }
+                acc
+            })
     }
 
     private fun checkTargetHasFieldsRequestedByReceiver(
