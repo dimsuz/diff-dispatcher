@@ -54,14 +54,14 @@ class Processor : AbstractProcessor() {
 
             val targetFields = targetElement.enclosedFields.map { TargetField(it) }
             // receiver interface method parameters grouped by method they belong to
-            val receiverFields = getReceiverFields(receiverElement)
+            val receiverParameters = getReceiverFields(receiverElement)
 
-            if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverFields)) {
+            if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverParameters)) {
                 return true
             }
 
             val dispatcherTypeSpec = generateDispatcherInterface(targetElement)
-            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverFields)
+            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters)
         }
 
         return true
@@ -93,7 +93,7 @@ class Processor : AbstractProcessor() {
         superInterface: TypeSpec,
         targetElement: TypeElement,
         receiverElement: TypeElement,
-        receiverFields: Map<TargetField, List<ExecutableElement>>
+        receiverParameters: Map<TargetField, List<ExecutableElement>>
     ) {
         val packageName = targetElement.enclosingPackageName
         val dispatchMethodSpec = superInterface.methodSpecs.single()
@@ -114,7 +114,8 @@ class Processor : AbstractProcessor() {
                     dispatchMethodSpec.parameters[0],
                     dispatchMethodSpec.parameters[1],
                     receiverElement,
-                    receiverFields)).build())
+                    receiverParameters
+                )).build())
             .build()
 
         JavaFile.builder(packageName, typeSpec)
@@ -126,8 +127,7 @@ class Processor : AbstractProcessor() {
         newStateArgSpec: ParameterSpec,
         prevStateArgSpec: ParameterSpec,
         receiverElement: TypeElement,
-        // TODO rename receiverParameters
-        receiverFields: Map<TargetField, List<ExecutableElement>>): CodeBlock {
+        receiverParameters: Map<TargetField, List<ExecutableElement>>): CodeBlock {
 
         val elem = receiverElement.enclosedMethods.first()
 //        val parameters = elem.parameters.forEach { logger.note(it.toString()) }
@@ -176,10 +176,10 @@ class Processor : AbstractProcessor() {
 
     private fun checkTargetHasFieldsRequestedByReceiver(
         targetFields: List<TargetField>,
-        receiverFields: Map<TargetField, List<ExecutableElement>>
+        receiverParameters: Map<TargetField, List<ExecutableElement>>
     ) : Boolean {
         // TODO also do strict checking for nullability? both target and receiver nullability must match?
-        val missing = receiverFields
+        val missing = receiverParameters
             .filterKeys { receiverField ->
                 targetFields.none { it.name == receiverField.name && typeUtils.isSameType(it.type, receiverField.type) }
             }
