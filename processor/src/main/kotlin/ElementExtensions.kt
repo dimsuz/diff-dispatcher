@@ -14,3 +14,8 @@ internal val Element.enclosedFields: List<VariableElement>
     get() {
         return enclosedElements.filter({ it.kind == ElementKind.FIELD }).map { it as VariableElement }
     }
+
+internal val Element.isNullable: Boolean
+    get() {
+        return annotationMirrors.any { it.annotationType.asElement().simpleName.endsWith("Nullable") }
+    }

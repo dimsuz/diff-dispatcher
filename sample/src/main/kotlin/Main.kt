@@ -10,7 +10,7 @@ data class UserInfoViewState(
     val middleName: String?,
     val address: Address,
     val friends: List<UserInfoViewState>,
-    val interests: List<Interest>,
+    val interests: List<Interest>?,
     val age: Int,
     val popularity: Float,
     val likesCheese: Boolean,
@@ -31,7 +31,7 @@ interface UserInfoRenderer {
     fun renderFirstName(firstName: String)
     fun renderUserAddress(address: UserInfoViewState.Address)
     fun renderFriends(friends: List<UserInfoViewState>)
-    fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>)
+    fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>?)
     fun renderPopularity(popularity: Float)
     fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
 //    fun fault(isIntelligent: Int)
@@ -61,7 +61,7 @@ class SampleRenderer : UserInfoRenderer {
         println("rendering friend list $friends")
     }
 
-    override fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>) {
+    override fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>?) {
         println("rendering friend list $friends AND interest list $interests")
     }
 
