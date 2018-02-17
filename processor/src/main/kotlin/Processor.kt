@@ -129,9 +129,6 @@ class Processor : AbstractProcessor() {
         receiverElement: TypeElement,
         receiverParameters: Map<TargetField, List<ExecutableElement>>): CodeBlock {
 
-        val elem = receiverElement.enclosedMethods.first()
-//        val parameters = elem.parameters.forEach { logger.note(it.toString()) }
-
         return CodeBlock.builder()
             .beginControlFlow("if (\$N == null)", prevStateArgSpec)
             .apply {
