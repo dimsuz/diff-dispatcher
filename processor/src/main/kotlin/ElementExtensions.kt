@@ -1,9 +1,6 @@
 package com.dimsuz.diffdispatcher.processor
 
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.ExecutableElement
-import javax.lang.model.element.VariableElement
+import javax.lang.model.element.*
 
 internal val Element.enclosedMethods: List<ExecutableElement>
     get() {
@@ -18,4 +15,13 @@ internal val Element.enclosedFields: List<VariableElement>
 internal val Element.isNullable: Boolean
     get() {
         return annotationMirrors.any { it.annotationType.asElement().simpleName.endsWith("Nullable") }
+    }
+
+internal val Element.enclosingPackage: PackageElement
+    get() {
+        var enclosing: Element? = this
+        while (enclosing != null && enclosing.kind != ElementKind.PACKAGE) {
+            enclosing = enclosing.enclosingElement
+        }
+        return (enclosing as? PackageElement) ?: throw IllegalStateException("no package element found")
     }

@@ -39,10 +39,6 @@ interface UserInfoRenderer {
 //    fun fault1(popularity: List<String>)
 }
 
-interface UserInfoRenderDispatcher {
-    fun render(newState: UserInfoViewState, previousState: UserInfoViewState?)
-}
-
 class SampleRenderer : UserInfoRenderer {
 
     override fun renderName(firstName: String, middleName: String?, lastName: String) {
@@ -74,8 +70,8 @@ class SampleRenderer : UserInfoRenderer {
     }
 }
 
-class UserInfoRenderDispatcher_Generated(private val renderer: UserInfoRenderer) : UserInfoRenderDispatcher {
-    override fun render(newState: UserInfoViewState, previousState: UserInfoViewState?) {
+class UserInfoRenderDispatcher_Generated(private val renderer: UserInfoRenderer) : UserInfoViewStateDiffDispatcher {
+    override fun dispatch(newState: UserInfoViewState, previousState: UserInfoViewState?) {
         if (previousState == null) {
             renderer.renderName(newState.firstName, newState.middleName, newState.lastName)
             renderer.renderFirstName(newState.firstName)
@@ -130,7 +126,7 @@ class UserInfoRenderDispatcherBuilder {
         return this
     }
 
-    fun build(): UserInfoRenderDispatcher {
+    fun build(): UserInfoViewStateDiffDispatcher {
         check(target != null)
         return UserInfoRenderDispatcher_Generated(target!!)
     }
@@ -166,5 +162,5 @@ fun main(args: Array<String>) {
         .target(SampleRenderer())
         .build()
 
-    dispatcher.render(user1, user2)
+    dispatcher.dispatch(user1, user2)
 }

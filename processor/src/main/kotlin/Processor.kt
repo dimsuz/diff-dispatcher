@@ -1,20 +1,24 @@
 package com.dimsuz.diffdispatcher.processor
 
 import com.dimsuz.diffdispatcher.annotations.DiffElement
+import com.squareup.javapoet.*
+import javax.annotation.Nonnull
+import javax.annotation.Nullable
 import javax.annotation.processing.AbstractProcessor
+import javax.annotation.processing.Filer
 import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.*
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Types
-import kotlin.math.log
 
 private const val RECEIVER_PARAMETER_NAME = "diffReceiver"
 
 class Processor : AbstractProcessor() {
     private lateinit var logger: Logger
     private lateinit var typeUtils: Types
+    private lateinit var filer: Filer
 
     @Synchronized
     override fun init(processingEnv: ProcessingEnvironment) {
@@ -22,7 +26,7 @@ class Processor : AbstractProcessor() {
 
         logger = Logger(processingEnv.messager)
         typeUtils = processingEnv.typeUtils
-        logger.note("starting annotation processing")
+        filer = processingEnv.filer
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -55,9 +59,32 @@ class Processor : AbstractProcessor() {
             if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverFields)) {
                 return true
             }
+
+            generateDispatcherInterface(targetElement)
         }
 
         return true
+    }
+
+    private fun generateDispatcherInterface(targetElement: TypeElement) {
+        val typeName = TypeName.get(targetElement.asType())
+        val typeSpec = TypeSpec.interfaceBuilder("${targetElement.simpleName}DiffDispatcher")
+            .addModifiers(Modifier.PUBLIC)
+            .addMethod(MethodSpec.methodBuilder("dispatch")
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .addParameter(ParameterSpec.builder(typeName, "newState")
+                    .addAnnotation(Nonnull::class.java)
+                    .build())
+                .addParameter(ParameterSpec.builder(typeName, "previousState")
+                    .addAnnotation(Nullable::class.java)
+                    .build())
+                .build()
+            )
+            .build()
+
+        JavaFile.builder(targetElement.enclosingPackage.qualifiedName.toString(), typeSpec)
+            .build()
+            .writeTo(filer)
     }
 
     private fun getReceiverFields(
