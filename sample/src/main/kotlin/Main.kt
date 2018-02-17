@@ -34,6 +34,7 @@ interface UserInfoRenderer {
     fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>?)
     fun renderPopularity(popularity: Float)
     fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
+    fun renderAge(age: Int)
 //    fun fault(isIntelligent: Int)
 //    fun fault(popularity: Long)
 //    fun fault1(popularity: List<String>)
@@ -67,6 +68,10 @@ class SampleRenderer : UserInfoRenderer {
 
     override fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean) {
         println("render age and cheese: age is $age, likesCheese is $likesCheese")
+    }
+
+    override fun renderAge(age: Int) {
+        println("render age: age is $age")
     }
 }
 

@@ -132,13 +132,73 @@ class Processor : AbstractProcessor() {
         return CodeBlock.builder()
             .beginControlFlow("if (\$N == null)", prevStateArgSpec)
             .apply {
-                receiverElement.enclosedMethods.map { generateDispatchCallStatement(newStateArgSpec, it) }
+                receiverElement.enclosedMethods
+                    .map { generateDispatchCallStatement(newStateArgSpec, it) }
                     .forEach { addStatement(it) }
             }
             .endControlFlow()
             .beginControlFlow("else")
+            .apply {
+                // if some parameter is used in more than 1 receiver method, cache computation of its
+                // "is changed" state in case it's costly
+                val cacheDiffComputation = receiverParameters
+                    .filter { (_, parentMethods) -> parentMethods.size > 1  }
+                    .keys
+                val generatedComputations = mutableSetOf<TargetField>()
+
+                receiverElement.enclosedMethods
+                    .flatMap {
+                        generateDiffableDispatchCallStatements(
+                            newStateArgSpec,
+                            prevStateArgSpec,
+                            cacheDiffComputation,
+                            generatedComputations,
+                            it
+                        )
+                    }
+                    .forEach { addStatement(it) }
+            }
             .endControlFlow()
             .build()
+    }
+
+    private fun generateDiffableDispatchCallStatements(
+        newStateArgSpec: ParameterSpec,
+        prevStateArgSpec: ParameterSpec,
+        cacheDiffStatements: Set<TargetField>,
+        generatedCachedStatements: MutableSet<TargetField>,
+        element: ExecutableElement
+    ): List<CodeBlock> {
+        val statements = ArrayList<CodeBlock>()
+        element.parameters.forEach {
+            val tf = TargetField(it)
+            if (cacheDiffStatements.contains(tf)) {
+                if (generatedCachedStatements.contains(tf)) {
+                    // TODO check if is primitive and use !=
+                    val isPrimitive = tf.type.kind.isPrimitive
+                    if (isPrimitive) {
+                        statements.add(
+                            CodeBlock.of(
+                                "boolean ${tf.name}Changed = \$N.${tf.name.toGetter()} != \$N.${tf.name.toGetter()}",
+                                newStateArgSpec,
+                                prevStateArgSpec
+                            )
+                        )
+                    } else {
+                        statements.add(
+                            CodeBlock.of(
+                                "boolean ${tf.name}Changed = !\$N.${tf.name.toGetter()}.equals(\$N.${tf.name.toGetter()})",
+                                newStateArgSpec,
+                                prevStateArgSpec
+                            )
+                        )
+                    }
+                } else {
+                    generatedCachedStatements.add(tf)
+                }
+            }
+        }
+        return statements
     }
 
     private fun generateDispatchCallStatement(stateArgSpec: ParameterSpec, element: ExecutableElement): CodeBlock {
@@ -146,7 +206,7 @@ class Processor : AbstractProcessor() {
             "receiver.\$N(\$N)",
             element.simpleName,
             element.parameters.joinToString(", ", transform = {
-                "${stateArgSpec.name}.get${it.simpleName.toString().capitalize()}()"
+                "${stateArgSpec.name}.${it.simpleName.toGetter()}"
             })
         )
     }
@@ -274,4 +334,8 @@ private fun MethodSpec.override(): MethodSpec.Builder {
         .addTypeVariables(this.typeVariables)
         .addParameters(this.parameters)
         .addExceptions(this.exceptions)
+}
+
+private fun CharSequence.toGetter(): String {
+    return "get${this.toString().capitalize()}()"
 }
