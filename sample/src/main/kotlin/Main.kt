@@ -11,7 +11,9 @@ data class UserInfoViewState(
     val address: Address,
     val friends: List<UserInfoViewState>,
     val interests: List<Interest>,
+    val age: Int,
     val popularity: Float,
+    val likesCheese: Boolean,
     val isIntelligent: Boolean?
 ) {
     data class Address(
@@ -31,13 +33,14 @@ interface UserInfoRenderer {
     fun renderFriends(friends: List<UserInfoViewState>)
     fun renderFriendsAndInterests(friends: List<UserInfoViewState>, interests: List<Interest>)
     fun renderPopularity(popularity: Float)
+    fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
 //    fun fault(isIntelligent: Int)
 //    fun fault(popularity: Long)
 //    fun fault1(popularity: List<String>)
 }
 
 interface UserInfoRenderDispatcher {
-    fun render(newState: UserInfoViewState, previousState: UserInfoViewState)
+    fun render(newState: UserInfoViewState, previousState: UserInfoViewState?)
 }
 
 class SampleRenderer : UserInfoRenderer {
@@ -63,13 +66,58 @@ class SampleRenderer : UserInfoRenderer {
     }
 
     override fun renderPopularity(popularity: Float) {
-        println("popularity is $popularity")
+        println("render popularity is $popularity")
+    }
+
+    override fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean) {
+        println("render age and cheese: age is $age, likesCheese is $likesCheese")
     }
 }
 
 class UserInfoRenderDispatcher_Generated(private val renderer: UserInfoRenderer) : UserInfoRenderDispatcher {
-    override fun render(newState: UserInfoViewState, previousState: UserInfoViewState) {
-        renderer.renderFriends(previousState.friends)
+    override fun render(newState: UserInfoViewState, previousState: UserInfoViewState?) {
+        if (previousState == null) {
+            renderer.renderName(newState.firstName, newState.middleName, newState.lastName)
+            renderer.renderFirstName(newState.firstName)
+            renderer.renderUserAddress(newState.address)
+            renderer.renderFriends(newState.friends)
+            renderer.renderFriendsAndInterests(newState.friends, newState.interests)
+            renderer.renderPopularity(newState.popularity)
+        } else {
+            val firstNameChanged = newState.firstName != previousState.firstName
+            if (firstNameChanged
+                || newState.middleName != previousState.middleName
+                || newState.lastName != previousState.lastName) {
+                renderer.renderName(newState.firstName, newState.middleName, newState.lastName)
+            }
+
+            if (firstNameChanged) {
+                renderer.renderFirstName(newState.firstName)
+            }
+
+            if (newState.address != previousState.address) {
+                renderer.renderUserAddress(newState.address)
+            }
+
+            val friendsChanged = newState.friends != previousState.friends
+            if (friendsChanged) {
+                renderer.renderFriends(newState.friends)
+            }
+
+            if (friendsChanged
+                || newState.interests != previousState.interests) {
+                renderer.renderFriendsAndInterests(newState.friends, newState.interests)
+            }
+
+            // in Java must use Float.floatToIntBits() to compare
+            if (newState.popularity != previousState.popularity) {
+                renderer.renderPopularity(newState.popularity)
+            }
+
+            if (newState.age != previousState.age || newState.likesCheese != previousState.likesCheese) {
+                renderer.renderAgeAndCheesePreference(newState.age, newState.likesCheese)
+            }
+        }
     }
 }
 
@@ -97,6 +145,8 @@ fun main(args: Array<String>) {
         friends = listOf(/* too lazy to create another one here */),
         interests = listOf(Interest("Haskell", listOf("Programming language", "Functional Programming"))),
         popularity = 0.7f,
+        age = 30,
+        likesCheese = true,
         isIntelligent = null
     )
     val user2 = UserInfoViewState(
@@ -107,6 +157,8 @@ fun main(args: Array<String>) {
         friends = listOf(/* too lazy to create another one here */),
         interests = listOf(Interest("Kotlin", listOf("Programming language"))),
         popularity = 0.8f,
+        age = 30,
+        likesCheese = true,
         isIntelligent = true
     )
 
