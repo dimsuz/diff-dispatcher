@@ -223,14 +223,36 @@ class Processor : AbstractProcessor() {
         }
     }
 
-}
+    // can't use a data class here, TypeMirror equals() isn't good enough,
+    // need to compare using Types.isSameType :-/
+    // For example for TypeMirrors of two parameters of same type in different functions equals() will return false
+    private inner class TargetField(
+        val name: String,
+        val type: TypeMirror
+    ) {
+        constructor(element: VariableElement) : this(element.simpleName.toString(), element.asType())
+        constructor(element: ExecutableElement) : this(element.simpleName.toString(), element.asType())
 
-private data class TargetField(
-    val name: String,
-    val type: TypeMirror
-) {
-    constructor(element: VariableElement) : this(element.simpleName.toString(), element.asType())
-    constructor(element: ExecutableElement) : this(element.simpleName.toString(), element.asType())
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as TargetField
+
+            if (name != other.name) return false
+            if (!typeUtils.isSameType(type, other.type)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = name.hashCode()
+            result = 31 * result + type.toString().hashCode()
+            return result
+        }
+
+    }
+
 }
 
 private fun hasHashCodeEquals(typeElement: TypeElement): Boolean {
