@@ -75,52 +75,6 @@ class SampleRenderer : UserInfoRenderer {
     }
 }
 
-class UserInfoRenderDispatcher_Generated(private val renderer: UserInfoRenderer) : UserInfoViewStateDiffDispatcher {
-    override fun dispatch(newState: UserInfoViewState, previousState: UserInfoViewState?) {
-        if (previousState == null) {
-            renderer.renderName(newState.firstName, newState.middleName, newState.lastName)
-            renderer.renderFirstName(newState.firstName)
-            renderer.renderUserAddress(newState.address)
-            renderer.renderFriends(newState.friends)
-            renderer.renderFriendsAndInterests(newState.friends, newState.interests)
-            renderer.renderPopularity(newState.popularity)
-        } else {
-            val firstNameChanged = newState.firstName != previousState.firstName
-            if (firstNameChanged
-                || newState.middleName != previousState.middleName
-                || newState.lastName != previousState.lastName) {
-                renderer.renderName(newState.firstName, newState.middleName, newState.lastName)
-            }
-
-            if (firstNameChanged) {
-                renderer.renderFirstName(newState.firstName)
-            }
-
-            if (newState.address != previousState.address) {
-                renderer.renderUserAddress(newState.address)
-            }
-
-            val friendsChanged = newState.friends != previousState.friends
-            if (friendsChanged) {
-                renderer.renderFriends(newState.friends)
-            }
-
-            if (friendsChanged
-                || newState.interests != previousState.interests) {
-                renderer.renderFriendsAndInterests(newState.friends, newState.interests)
-            }
-
-            // in Java must use Float.floatToIntBits() to compare
-            if (newState.popularity != previousState.popularity) {
-                renderer.renderPopularity(newState.popularity)
-            }
-
-            if (newState.age != previousState.age || newState.likesCheese != previousState.likesCheese) {
-                renderer.renderAgeAndCheesePreference(newState.age, newState.likesCheese)
-            }
-        }
-    }
-}
 
 // Generated too
 class UserInfoRenderDispatcherBuilder {
@@ -133,7 +87,7 @@ class UserInfoRenderDispatcherBuilder {
 
     fun build(): UserInfoViewStateDiffDispatcher {
         check(target != null)
-        return UserInfoRenderDispatcher_Generated(target!!)
+        return UserInfoViewStateDiffDispatcher_Generated(target!!)
     }
 }
 
@@ -167,5 +121,5 @@ fun main(args: Array<String>) {
         .target(SampleRenderer())
         .build()
 
-    dispatcher.dispatch(user1, user2)
+    dispatcher.dispatch(user2, user1)
 }
