@@ -173,7 +173,6 @@ class Processor : AbstractProcessor() {
         element: ExecutableElement
     ): CodeBlock {
         val dispatchBlock = CodeBlock.builder()
-        val statements = ArrayList<CodeBlock>()
         val checkStatements = ArrayList<CodeBlock>()
         element.parameters.forEach {
             val tf = TargetField(it)
