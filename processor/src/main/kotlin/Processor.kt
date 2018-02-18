@@ -2,6 +2,7 @@ package com.dimsuz.diffdispatcher.processor
 
 import com.dimsuz.diffdispatcher.annotations.DiffElement
 import com.squareup.javapoet.*
+import java.util.*
 import javax.annotation.Nonnull
 import javax.annotation.Nullable
 import javax.annotation.processing.AbstractProcessor
@@ -10,6 +11,7 @@ import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.*
+import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Types
 
@@ -116,6 +118,7 @@ class Processor : AbstractProcessor() {
                     receiverElement,
                     receiverParameters
                 )).build())
+            .addMethods(generateEqualsHelpers(receiverParameters.keys))
             .build()
 
         JavaFile.builder(packageName, typeSpec)
@@ -224,19 +227,28 @@ class Processor : AbstractProcessor() {
         prevStateArgSpec: ParameterSpec
         ): CodeBlock {
 
-        val isPrimitive = parameter.type.kind.isPrimitive
-        return if (isPrimitive) {
+        val kind = parameter.type.kind
+        val needsCustomEquals = kind == TypeKind.FLOAT || kind == TypeKind.DOUBLE || kind == TypeKind.ARRAY
+        return if (kind.isPrimitive && !needsCustomEquals) {
             CodeBlock.of(
                 "\$N.${parameter.name.toGetter()} != \$N.${parameter.name.toGetter()}",
                 newStateArgSpec,
                 prevStateArgSpec
             )
         } else {
-            CodeBlock.of(
-                "!\$N.${parameter.name.toGetter()}.equals(\$N.${parameter.name.toGetter()})",
-                newStateArgSpec,
-                prevStateArgSpec
-            )
+            if (parameter.isNullable || needsCustomEquals) {
+                CodeBlock.of(
+                    "!areEqual(\$N.${parameter.name.toGetter()}, \$N.${parameter.name.toGetter()})",
+                    newStateArgSpec,
+                    prevStateArgSpec
+                )
+            } else {
+                CodeBlock.of(
+                    "!\$N.${parameter.name.toGetter()}.equals(\$N.${parameter.name.toGetter()})",
+                    newStateArgSpec,
+                    prevStateArgSpec
+                )
+            }
         }
     }
 
@@ -248,6 +260,65 @@ class Processor : AbstractProcessor() {
                 "${stateArgSpec.name}.${it.simpleName.toGetter()}"
             })
         )
+    }
+
+    /**
+     * Generates a set of helper-methods to check for nullable objects, arrays and floating point types equality
+     */
+    private fun generateEqualsHelpers(receiverParameters: Collection<TargetField>): List<MethodSpec> {
+        // there can be several types of arrays (int[], float[], Object[], ...) for each of them
+        // need to add an utility function
+        val arraysTypes = receiverParameters.filter { it.type.kind == TypeKind.ARRAY }
+            .mapTo(mutableSetOf(), { TypeName.get(it.type) })
+        val haveFloats = receiverParameters.any { it.type.kind == TypeKind.FLOAT }
+        val haveDoubles = receiverParameters.any { it.type.kind == TypeKind.DOUBLE }
+        val haveObjects = receiverParameters.any { it.type.kind == TypeKind.DECLARED }
+
+        val methods = arrayListOf<MethodSpec>()
+
+        arraysTypes.mapTo(methods) {
+            MethodSpec.methodBuilder("areEqual")
+                .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC)
+                .addParameter(it, "first")
+                .addParameter(it, "second")
+                .addStatement("return \$T.equals(\$N, \$N)", Arrays::class.java, "first", "second")
+                .returns(TypeName.BOOLEAN)
+                .build()
+        }
+
+        if (haveFloats) {
+            val m = MethodSpec.methodBuilder("areEqual")
+                .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC)
+                .addParameter(TypeName.FLOAT, "first")
+                .addParameter(TypeName.FLOAT, "second")
+                .addStatement("return Float.compare(\$N, \$N) == 0", "first", "second")
+                .returns(TypeName.BOOLEAN)
+                .build()
+            methods.add(m)
+        }
+
+        if (haveDoubles) {
+            val m = MethodSpec.methodBuilder("areEqual")
+                .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC)
+                .addParameter(TypeName.DOUBLE, "first")
+                .addParameter(TypeName.DOUBLE, "second")
+                .addStatement("return Double.compare(\$N, \$N) == 0", "first", "second")
+                .returns(TypeName.BOOLEAN)
+                .build()
+            methods.add(m)
+        }
+
+        if (haveObjects) {
+            val m = MethodSpec.methodBuilder("areEqual")
+                .addModifiers(Modifier.PRIVATE, Modifier.FINAL, Modifier.STATIC)
+                .addParameter(TypeName.OBJECT, "first")
+                .addParameter(TypeName.OBJECT, "second")
+                .addStatement("return \$1N == null ? \$2N == null : $1N.equals($2N)", "first", "second")
+                .returns(TypeName.BOOLEAN)
+                .build()
+            methods.add(m)
+        }
+        return methods
     }
 
     private fun getReceiverFields(
@@ -327,10 +398,11 @@ class Processor : AbstractProcessor() {
     // For example for TypeMirrors of two parameters of same type in different functions equals() will return false
     private inner class TargetField(
         val name: String,
-        val type: TypeMirror
+        val type: TypeMirror,
+        val isNullable: Boolean
     ) {
-        constructor(element: VariableElement) : this(element.simpleName.toString(), element.asType())
-        constructor(element: ExecutableElement) : this(element.simpleName.toString(), element.asType())
+        constructor(element: VariableElement)
+            : this(element.simpleName.toString(), element.asType(), element.isNullable)
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -340,6 +412,7 @@ class Processor : AbstractProcessor() {
 
             if (name != other.name) return false
             if (!typeUtils.isSameType(type, other.type)) return false
+            if (isNullable != other.isNullable) return false
 
             return true
         }
@@ -347,6 +420,7 @@ class Processor : AbstractProcessor() {
         override fun hashCode(): Int {
             var result = name.hashCode()
             result = 31 * result + type.toString().hashCode()
+            result = 31 * result + isNullable.hashCode()
             return result
         }
 
