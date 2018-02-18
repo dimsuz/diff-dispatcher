@@ -148,7 +148,7 @@ class Processor : AbstractProcessor() {
 
                 receiverElement.enclosedMethods
                     .flatMap {
-                        generateDiffableDispatchCallStatements(
+                        generateDiffableDispatchCallStatement(
                             newStateArgSpec,
                             prevStateArgSpec,
                             cacheDiffComputation,
@@ -162,7 +162,7 @@ class Processor : AbstractProcessor() {
             .build()
     }
 
-    private fun generateDiffableDispatchCallStatements(
+    private fun generateDiffableDispatchCallStatement(
         newStateArgSpec: ParameterSpec,
         prevStateArgSpec: ParameterSpec,
         cacheDiffStatements: Set<TargetField>,
@@ -173,32 +173,53 @@ class Processor : AbstractProcessor() {
         element.parameters.forEach {
             val tf = TargetField(it)
             if (cacheDiffStatements.contains(tf)) {
-                if (generatedCachedStatements.contains(tf)) {
-                    // TODO check if is primitive and use !=
-                    val isPrimitive = tf.type.kind.isPrimitive
-                    if (isPrimitive) {
-                        statements.add(
-                            CodeBlock.of(
-                                "boolean ${tf.name}Changed = \$N.${tf.name.toGetter()} != \$N.${tf.name.toGetter()}",
-                                newStateArgSpec,
-                                prevStateArgSpec
-                            )
-                        )
-                    } else {
-                        statements.add(
-                            CodeBlock.of(
-                                "boolean ${tf.name}Changed = !\$N.${tf.name.toGetter()}.equals(\$N.${tf.name.toGetter()})",
-                                newStateArgSpec,
-                                prevStateArgSpec
-                            )
-                        )
-                    }
-                } else {
-                    generatedCachedStatements.add(tf)
-                }
+                generateCachedChangeCheckIfNeeded(tf, newStateArgSpec, prevStateArgSpec, generatedCachedStatements)
+                    ?.let { statements.add(it) }
             }
         }
         return statements
+    }
+
+    private fun generateCachedChangeCheckIfNeeded(
+        parameter: TargetField,
+        newStateArgSpec: ParameterSpec,
+        prevStateArgSpec: ParameterSpec,
+        generatedCachedStatements: MutableSet<TargetField>
+    ): CodeBlock? {
+        val statement: CodeBlock?
+        if (!generatedCachedStatements.contains(parameter)) {
+            statement = CodeBlock.join(listOf(
+                CodeBlock.of("boolean ${parameter.name}Changed"),
+                generateComparison(parameter, newStateArgSpec, prevStateArgSpec)),
+                " = "
+            )
+            generatedCachedStatements.add(parameter)
+        } else {
+            statement = null
+        }
+        return statement
+    }
+
+    private fun generateComparison(
+        parameter: TargetField,
+        newStateArgSpec: ParameterSpec,
+        prevStateArgSpec: ParameterSpec
+        ): CodeBlock {
+
+        val isPrimitive = parameter.type.kind.isPrimitive
+        return if (isPrimitive) {
+            CodeBlock.of(
+                "\$N.${parameter.name.toGetter()} != \$N.${parameter.name.toGetter()}",
+                newStateArgSpec,
+                prevStateArgSpec
+            )
+        } else {
+            CodeBlock.of(
+                "!\$N.${parameter.name.toGetter()}.equals(\$N.${parameter.name.toGetter()})",
+                newStateArgSpec,
+                prevStateArgSpec
+            )
+        }
     }
 
     private fun generateDispatchCallStatement(stateArgSpec: ParameterSpec, element: ExecutableElement): CodeBlock {
