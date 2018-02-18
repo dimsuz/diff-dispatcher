@@ -1,5 +1,8 @@
 apply plugin: 'kotlin'
 apply plugin: 'kotlin-kapt'
+apply plugin: 'application'
+
+mainClassName = "com.dimsuz.diffdispatcher.sample.MainKt"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
