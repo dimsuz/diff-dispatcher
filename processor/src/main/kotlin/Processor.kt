@@ -147,7 +147,7 @@ class Processor : AbstractProcessor() {
                 val generatedComputations = mutableSetOf<TargetField>()
 
                 receiverElement.enclosedMethods
-                    .flatMap {
+                    .map {
                         generateDiffableDispatchCallStatement(
                             newStateArgSpec,
                             prevStateArgSpec,
@@ -156,7 +156,7 @@ class Processor : AbstractProcessor() {
                             it
                         )
                     }
-                    .forEach { addStatement(it) }
+                    .forEach { add(it) }
             }
             .endControlFlow()
             .build()
@@ -168,18 +168,36 @@ class Processor : AbstractProcessor() {
         cacheDiffStatements: Set<TargetField>,
         generatedCachedStatements: MutableSet<TargetField>,
         element: ExecutableElement
-    ): List<CodeBlock> {
+    ): CodeBlock {
+        val dispatchBlock = CodeBlock.builder()
         val statements = ArrayList<CodeBlock>()
+        val checkStatements = ArrayList<CodeBlock>()
         element.parameters.forEach {
             val tf = TargetField(it)
             if (cacheDiffStatements.contains(tf)) {
                 generateCachedChangeCheckIfNeeded(tf, newStateArgSpec, prevStateArgSpec, generatedCachedStatements)
-                    ?.let { statements.add(it) }
+                    ?.let { dispatchBlock.addStatement(it) }
+
+                checkStatements.add(CodeBlock.of("${tf.name}Changed"))
+            } else {
+                checkStatements.add(generateComparison(tf, newStateArgSpec, prevStateArgSpec))
             }
         }
-        return statements
+        return dispatchBlock
+            .beginControlFlow("if (\$N)", CodeBlock.join(checkStatements, " || ").toString())
+            .addStatement(generateDispatchCallStatement(newStateArgSpec, element))
+            .endControlFlow()
+            .build()
     }
 
+    /**
+     * Generates a change check "cached" int variable, for example:
+     *
+     * ```
+     * boolean somePrimitiveFieldChanged = newState.someField != previousState.someField;
+     * boolean someObjectFieldChanged = !newState.someField.equals(previousState.someField);
+     * ```
+     */
     private fun generateCachedChangeCheckIfNeeded(
         parameter: TargetField,
         newStateArgSpec: ParameterSpec,
