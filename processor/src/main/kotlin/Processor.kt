@@ -62,16 +62,20 @@ class Processor : AbstractProcessor() {
                 return true
             }
 
-            val dispatcherTypeSpec = generateDispatcherInterface(targetElement)
+            val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement)
             generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters)
         }
 
         return true
     }
 
-    private fun generateDispatcherInterface(targetElement: TypeElement): TypeSpec {
+    private fun generateDispatcherInterface(
+        targetElement: TypeElement,
+        receiverElement: TypeElement
+    ): TypeSpec {
         val targetTypeName = TypeName.get(targetElement.asType())
-        val typeSpec = TypeSpec.interfaceBuilder("${targetElement.simpleName}DiffDispatcher")
+        val interfaceName = "${targetElement.simpleName}DiffDispatcher"
+        val typeSpec = TypeSpec.interfaceBuilder(interfaceName)
             .addModifiers(Modifier.PUBLIC)
             .addMethod(MethodSpec.methodBuilder("dispatch")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
@@ -83,6 +87,7 @@ class Processor : AbstractProcessor() {
                     .build())
                 .build()
             )
+            .addType(generateDispatcherBuilder(interfaceName, receiverElement))
             .build()
 
         JavaFile.builder(targetElement.enclosingPackageName, typeSpec)
@@ -96,7 +101,7 @@ class Processor : AbstractProcessor() {
         targetElement: TypeElement,
         receiverElement: TypeElement,
         receiverParameters: Map<TargetField, List<ExecutableElement>>
-    ) {
+    ): TypeSpec {
         val packageName = targetElement.enclosingPackageName
         val dispatchMethodSpec = superInterface.methodSpecs.single()
         val constructorSpec = MethodSpec.constructorBuilder()
@@ -124,6 +129,35 @@ class Processor : AbstractProcessor() {
         JavaFile.builder(packageName, typeSpec)
             .build()
             .writeTo(filer)
+
+        return typeSpec
+    }
+
+    private fun generateDispatcherBuilder(
+        interfaceName: String,
+        receiverElement: TypeElement
+    ): TypeSpec {
+        val builderClassName = "Builder"
+        val typeSpec = TypeSpec.classBuilder(builderClassName)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL, Modifier.STATIC)
+            .addMethod(MethodSpec.methodBuilder("target")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addParameter(ParameterSpec.builder(TypeName.get(receiverElement.asType()), "receiver")
+                    .addAnnotation(Nonnull::class.java)
+                    .build())
+                .addAnnotation(Nonnull::class.java)
+                .returns(ClassName.get(receiverElement.enclosingPackageName, interfaceName, builderClassName))
+                // TODO save target in private var
+                .addStatement("return this")
+                .build())
+            .addMethod(MethodSpec.methodBuilder("build")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addAnnotation(Nonnull::class.java)
+                .returns(ClassName.get(receiverElement.enclosingPackageName, interfaceName))
+                // TODO return generated dispatcher
+                .addStatement("return null")
+                .build())
+        return typeSpec.build()
     }
 
     private fun generateDispatcherStatements(
