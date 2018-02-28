@@ -76,21 +76,6 @@ class SampleRenderer : UserInfoRenderer {
 }
 
 
-// Generated too
-class UserInfoRenderDispatcherBuilder {
-    private var target: UserInfoRenderer? = null
-
-    fun target(t: UserInfoRenderer): UserInfoRenderDispatcherBuilder {
-        target = t
-        return this
-    }
-
-    fun build(): UserInfoViewStateDiffDispatcher {
-        check(target != null)
-        return UserInfoViewStateDiffDispatcher_Generated(target!!)
-    }
-}
-
 fun main(args: Array<String>) {
     val user1 = UserInfoViewState(
         firstName = "Dmitry",
@@ -117,7 +102,7 @@ fun main(args: Array<String>) {
         isIntelligent = true
     )
 
-    val dispatcher = UserInfoRenderDispatcherBuilder()
+    val dispatcher = UserInfoViewStateDiffDispatcher.Builder()
         .target(SampleRenderer())
         .build()
 

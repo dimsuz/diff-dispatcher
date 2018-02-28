@@ -62,8 +62,10 @@ class Processor : AbstractProcessor() {
                 return true
             }
 
-            val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement)
-            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters)
+            val dispatcherImplSuffix = "_Generated"
+            val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement, dispatcherImplSuffix)
+            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters,
+                dispatcherImplSuffix)
         }
 
         return true
@@ -71,7 +73,8 @@ class Processor : AbstractProcessor() {
 
     private fun generateDispatcherInterface(
         targetElement: TypeElement,
-        receiverElement: TypeElement
+        receiverElement: TypeElement,
+        dispatcherImplSuffix: String
     ): TypeSpec {
         val targetTypeName = TypeName.get(targetElement.asType())
         val interfaceName = "${targetElement.simpleName}DiffDispatcher"
@@ -87,7 +90,7 @@ class Processor : AbstractProcessor() {
                     .build())
                 .build()
             )
-            .addType(generateDispatcherBuilder(interfaceName, receiverElement))
+            .addType(generateDispatcherBuilder(interfaceName, receiverElement, dispatcherImplSuffix))
             .build()
 
         JavaFile.builder(targetElement.enclosingPackageName, typeSpec)
@@ -100,7 +103,8 @@ class Processor : AbstractProcessor() {
         superInterface: TypeSpec,
         targetElement: TypeElement,
         receiverElement: TypeElement,
-        receiverParameters: Map<TargetField, List<ExecutableElement>>
+        receiverParameters: Map<TargetField, List<ExecutableElement>>,
+        dispatcherImplSuffix: String
     ): TypeSpec {
         val packageName = targetElement.enclosingPackageName
         val dispatchMethodSpec = superInterface.methodSpecs.single()
@@ -110,7 +114,7 @@ class Processor : AbstractProcessor() {
             .addStatement("this.\$N = \$N", "receiver", "receiver")
             .build()
 
-        val typeSpec = TypeSpec.classBuilder("${superInterface.name}_Generated")
+        val typeSpec = TypeSpec.classBuilder("${superInterface.name}$dispatcherImplSuffix")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(
                 ClassName.get(packageName, superInterface.name))
@@ -135,27 +139,36 @@ class Processor : AbstractProcessor() {
 
     private fun generateDispatcherBuilder(
         interfaceName: String,
-        receiverElement: TypeElement
+        receiverElement: TypeElement,
+        dispatcherImplSuffix: String
     ): TypeSpec {
         val builderClassName = "Builder"
+        val receiverParamName = "receiver"
+        val receiverSetterName = "target"
         val typeSpec = TypeSpec.classBuilder(builderClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL, Modifier.STATIC)
-            .addMethod(MethodSpec.methodBuilder("target")
+            .addField(TypeName.get(receiverElement.asType()), receiverParamName, Modifier.PRIVATE)
+            .addMethod(MethodSpec.methodBuilder(receiverSetterName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addParameter(ParameterSpec.builder(TypeName.get(receiverElement.asType()), "receiver")
+                .addParameter(ParameterSpec.builder(TypeName.get(receiverElement.asType()), receiverParamName)
                     .addAnnotation(Nonnull::class.java)
                     .build())
                 .addAnnotation(Nonnull::class.java)
                 .returns(ClassName.get(receiverElement.enclosingPackageName, interfaceName, builderClassName))
-                // TODO save target in private var
+                .addStatement("this.\$1N = \$1N", receiverParamName)
                 .addStatement("return this")
                 .build())
             .addMethod(MethodSpec.methodBuilder("build")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Nonnull::class.java)
                 .returns(ClassName.get(receiverElement.enclosingPackageName, interfaceName))
-                // TODO return generated dispatcher
-                .addStatement("return null")
+                .beginControlFlow("if (this.\$N == null)", receiverParamName)
+                .addStatement(
+                    "throw new \$T(\$S)",
+                    IllegalStateException::class.java,
+                    "no \"$receiverParamName\" specified, use \"$receiverSetterName\" Builder's method to set it")
+                .endControlFlow()
+                .addStatement("return new \$N\$N(this.\$N)", interfaceName, dispatcherImplSuffix, receiverParamName)
                 .build())
         return typeSpec.build()
     }
