@@ -1,4 +1,4 @@
-package com.dimsuz.diffdispatcher.processor
+package com.github.dimsuz.diffdispatcher.processor
 
 import javax.lang.model.element.*
 

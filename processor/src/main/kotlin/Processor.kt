@@ -1,6 +1,6 @@
-package com.dimsuz.diffdispatcher.processor
+package com.github.dimsuz.diffdispatcher.processor
 
-import com.dimsuz.diffdispatcher.annotations.DiffElement
+import com.github.dimsuz.diffdispatcher.annotations.DiffElement
 import com.squareup.javapoet.*
 import java.util.*
 import javax.annotation.Nonnull

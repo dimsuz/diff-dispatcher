@@ -1,7 +1,7 @@
-package com.dimsuz.diffdispatcher.sample
+package com.github.dimsuz.diffdispatcher.sample
 
-import com.dimsuz.diffdispatcher.annotations.DiffElement
-import com.dimsuz.diffdispatcher.sample.UserInfoViewState.Interest
+import com.github.dimsuz.diffdispatcher.annotations.DiffElement
+import com.github.dimsuz.diffdispatcher.sample.UserInfoViewState.Interest
 
 @DiffElement(diffReceiver = UserInfoRenderer::class)
 data class UserInfoViewState(
