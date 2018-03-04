@@ -54,6 +54,9 @@ class Processor : AbstractProcessor() {
             if (!checkTargetHasFieldsRequestedByReceiver(targetElement, receiverElement, receiverParameters)) {
                 return true
             }
+            if (!checkNullabilityMatches(targetElement, receiverParameters)) {
+                return true
+            }
             warnIfMissingHashCodeEquals(targetElement, receiverParameters.keys)
 
             val dispatcherImplSuffix = "_Generated"
@@ -445,6 +448,33 @@ class Processor : AbstractProcessor() {
         return missing.isEmpty()
     }
 
+    /**
+     * Returns true if all [targetElement] fields have stronger or the same nullability as ones in [receiverParameters].
+     *
+     * For example if receiverElement has some method accepting a `String`, but the diff target class has the
+     * corresponding property listed as `String?` that means null can potentially be passed to the render
+     * function when it doesn't expect it. So an error must be raised in this case
+     */
+    private fun checkNullabilityMatches(
+        targetElement: TypeElement,
+        receiverParameters: Map<TargetField, List<ExecutableElement>>): Boolean {
+        val weakerParams = receiverParameters
+            .keys
+            .filter { !it.isNullable }
+            .filter {
+                targetElement.findGetter(it)?.isNullable == true
+            }
+        for (p in weakerParams) {
+            logger.error("Parameter \"${p.name}\" has a weaker nullability " +
+                "than a \"${targetElement.simpleName}\" class property.")
+            logger.error("This can lead to a runtime error and must be fixed.")
+            logger.error("  method(s): ${receiverParameters[p]!!.joinToString { it.simpleName }}")
+            logger.error("  parameter type: ${p.type.toString().prettifiedQualified(targetElement)}")
+            logger.error("  expected  type: ${p.type.toString().prettifiedQualified(targetElement)}?")
+        }
+        return weakerParams.isEmpty()
+    }
+
     private fun getReceiverElement(targetElement: TypeElement): TypeElement? {
         val annotation = targetElement.annotationMirrors
             .find {
@@ -519,6 +549,18 @@ class Processor : AbstractProcessor() {
 
     }
 
+    private fun Element.findGetter(param: Processor.TargetField): ExecutableElement? {
+        return this.enclosedMethods .find {
+            it.simpleName.toString() == param.name.toGetterName() && typeUtils.isSameType(it.returnType, param.type)
+        }
+    }
+
+    private fun CharSequence.prettifiedQualified(targetElement: TypeElement): String {
+        return this.toString()
+            .replace("java.lang.", "")
+            .replace("java.util.", "")
+            .replace("${targetElement.enclosingPackageName}.", "")
+    }
 }
 
 private fun hasHashCodeEquals(typeElement: TypeElement): Boolean {
