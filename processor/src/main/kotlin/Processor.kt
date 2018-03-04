@@ -363,6 +363,23 @@ class Processor : AbstractProcessor() {
         return methods
     }
 
+    /**
+     * Returns a set of fields used in diff-receiver interface mapped to the function elements of interface
+     * in which they are used.
+     * This maybe a subset of diff target data class fields or all of them.
+     * ```
+     * interface MyReceiver {
+     *   fun function1(field1: Data, field2: String)
+     *   fun function2(field2: String)
+     * }
+     * ```
+     * will return a map like
+     *
+     * ```
+     * field1 -> [function1]
+     * field2 -> [function1, function2]
+     * ```
+     */
     private fun getReceiverFields(
         receiverElement: TypeElement
     ): MutableMap<TargetField, MutableList<ExecutableElement>> {
