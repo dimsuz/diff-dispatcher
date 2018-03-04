@@ -48,12 +48,10 @@ class Processor : AbstractProcessor() {
 
             val targetElement = element as TypeElement
             val receiverElement = getReceiverElement(targetElement) ?: return true // error should already be printed
-
-            val targetFields = targetElement.enclosedFields.map { TargetField(it) }
             // receiver interface method parameters grouped by method they belong to
             val receiverParameters = getReceiverFields(receiverElement)
 
-            if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverParameters)) {
+            if (!checkTargetHasFieldsRequestedByReceiver(targetElement, receiverElement, receiverParameters)) {
                 return true
             }
             warnIfMissingHashCodeEquals(targetElement, receiverParameters.keys)
@@ -402,21 +400,46 @@ class Processor : AbstractProcessor() {
     }
 
     private fun checkTargetHasFieldsRequestedByReceiver(
-        targetFields: List<TargetField>,
+        targetElement: TypeElement,
+        receiverElement: TypeElement,
         receiverParameters: Map<TargetField, List<ExecutableElement>>
     ) : Boolean {
+
         // TODO also do strict checking for nullability? both target and receiver nullability must match?
         val missing = receiverParameters
             .filterKeys { receiverField ->
-                targetFields.none { it.name == receiverField.name && typeUtils.isSameType(it.type, receiverField.type) }
+                // NOTE searching for getters, because this is what ends up in generated code!
+                targetElement.enclosedMethods.none {
+                    it.isPublic && it.simpleName.toString() == receiverField.name.toGetterName()
+                        && typeUtils.isSameType(it.returnType, receiverField.type)
+                }
             }
+
         for ((argName, methods) in missing) {
-            // TODO log it like "ReceiverClassName contains a field name missing from TargetClassName:...."
+            // Catch when field is private in kotlin data class
+            // (if check only getters, it will be reported as completely missing, be a bit smarter)
+            val isNotPublicField = targetElement.enclosedFields.any {
+                !it.isPublic && it.simpleName.toString() == argName.name
+            }
+            // Catch a private getter (most probably will happen not in a data class)
+            val isNotPublicGetter = targetElement.enclosedMethods.any {
+                !it.isPublic && it.simpleName.toString() == argName.name
+            }
             for (method in methods) {
-                logger.error("diffReceiver method contains field missing from diff element class")
-                logger.error("  method: $method")
-                logger.error("  field: ${argName.name}")
-                logger.error("  fieldType: ${argName.type}")
+                if (isNotPublicField || isNotPublicGetter) {
+                    logger.error( "\"${receiverElement.simpleName}\" method uses " +
+                        "a property which does not have a public getter in \"${targetElement.simpleName}\" class")
+                } else {
+                    logger.error( "\"${receiverElement.simpleName}\" method uses " +
+                        "a property missing from \"${targetElement.simpleName}\" class")
+                }
+                logger.error("  property: ${argName.name}")
+                logger.error("  type:     ${argName.type}")
+                logger.error("  method:   $method")
+                logger.error("Solutions:")
+                logger.error("  * Add a public property \"${argName.name}\" to \"${targetElement.simpleName}\"")
+                logger.error("  * Add a public getter \"${argName.name.toGetter()}\" to \"${targetElement.simpleName}\"")
+                logger.error("  * Remove \"${argName.name}\" from argument list of \"$method\"")
             }
         }
         return missing.isEmpty()
@@ -520,5 +543,9 @@ private fun MethodSpec.override(): MethodSpec.Builder {
 }
 
 private fun CharSequence.toGetter(): String {
-    return "get${this.toString().capitalize()}()"
+    return "${this.toGetterName()}()"
+}
+
+private fun CharSequence.toGetterName(): String {
+    return "get${this.toString().capitalize()}"
 }
