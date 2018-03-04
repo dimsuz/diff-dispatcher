@@ -384,6 +384,7 @@ class Processor : AbstractProcessor() {
         receiverElement: TypeElement
     ): MutableMap<TargetField, MutableList<ExecutableElement>> {
         // TODO describe why need custom fold/grouping (because need to use isSameType)
+        // TODO UPD now TargetField has proper equals() implementation, this should be simplified to use stdlib group*?
         return receiverElement.enclosedMethods
             .flatMap { method -> method.parameters.map { param -> param to method } }
             .fold(mutableMapOf(), { acc, (param, method) ->
