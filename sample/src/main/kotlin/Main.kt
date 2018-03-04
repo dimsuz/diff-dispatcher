@@ -35,9 +35,6 @@ interface UserInfoRenderer {
     fun renderPopularity(popularity: Float)
     fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
     fun renderAge(age: Int)
-//    fun fault(isIntelligent: Int)
-//    fun fault(popularity: Long)
-//    fun fault1(popularity: List<String>)
 }
 
 class SampleRenderer : UserInfoRenderer {
