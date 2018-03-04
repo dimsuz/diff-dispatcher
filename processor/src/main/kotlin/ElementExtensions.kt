@@ -17,6 +17,11 @@ internal val Element.isNullable: Boolean
         return annotationMirrors.any { it.annotationType.asElement().simpleName.endsWith("Nullable") }
     }
 
+internal val Element.isPublic: Boolean
+    get() {
+        return modifiers.contains(Modifier.PUBLIC)
+    }
+
 internal val Element.enclosingPackage: PackageElement
     get() {
         var enclosing: Element? = this
