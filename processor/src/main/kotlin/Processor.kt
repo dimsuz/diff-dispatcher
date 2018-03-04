@@ -54,6 +54,9 @@ class Processor : AbstractProcessor() {
             if (!checkTargetHasFieldsRequestedByReceiver(targetElement, receiverElement, receiverParameters)) {
                 return true
             }
+            if (!checkReceiverArgumentNullabilityConsistent(receiverElement)) {
+                return true
+            }
             if (!checkNullabilityMatches(targetElement, receiverParameters)) {
                 return true
             }
@@ -408,7 +411,6 @@ class Processor : AbstractProcessor() {
         receiverParameters: Map<TargetField, List<ExecutableElement>>
     ) : Boolean {
 
-        // TODO also do strict checking for nullability? both target and receiver nullability must match?
         val missing = receiverParameters
             .filterKeys { receiverField ->
                 // NOTE searching for getters, because this is what ends up in generated code!
@@ -457,7 +459,8 @@ class Processor : AbstractProcessor() {
      */
     private fun checkNullabilityMatches(
         targetElement: TypeElement,
-        receiverParameters: Map<TargetField, List<ExecutableElement>>): Boolean {
+        receiverParameters: Map<TargetField, List<ExecutableElement>>
+    ): Boolean {
         val weakerParams = receiverParameters
             .keys
             .filter { !it.isNullable }
@@ -473,6 +476,40 @@ class Processor : AbstractProcessor() {
             logger.error("  expected  type: ${p.type.toString().prettifiedQualified(targetElement)}?")
         }
         return weakerParams.isEmpty()
+    }
+
+    /**
+     * Checks that whenever parameter is used in multiple methods of the receiver class, it has the same nullability.
+     * Otherwise [checkNullabilityMatches] won't catch "tricky" cases, for example:
+     * ```
+     * data class Target(val field: String?)
+     * interface Renderer {
+     *   fun render1(field: String?)
+     *   fun render2(field: String)
+     * }
+     * ```
+     * In the above case `field`'s nullability will be recorded into `receiverParameters` as nullable, same as
+     * Target's nullability and [checkNullabilityMatches] will pass although it shouldn't.
+     *
+     * An alternative solution would be to have `receiverParameters` to be multi-map and have
+     * two keys for `field`,  but that's too much of a refactor for now...
+     */
+    private fun checkReceiverArgumentNullabilityConsistent(
+        receiverElement: TypeElement
+    ): Boolean {
+        val params = receiverElement.enclosedMethods
+            .flatMap { it.parameters }
+            .groupBy({ it.simpleName.toString() }, { it.isNullable })
+
+        val varyingNullabilityParams = params.filter { it.value.distinct().size > 1 }
+
+        for ((p, _) in varyingNullabilityParams) {
+            logger.error("Parameter \"$p\" has varying nullability in different methods " +
+                "of \"${receiverElement.simpleName}\"")
+            logger.error("Nullability has to be the same to prevent runtime errors.")
+        }
+
+        return varyingNullabilityParams.isEmpty()
     }
 
     private fun getReceiverElement(targetElement: TypeElement): TypeElement? {
