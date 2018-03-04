@@ -49,7 +49,6 @@ class Processor : AbstractProcessor() {
             val targetElement = element as TypeElement
             val receiverElement = getReceiverElement(targetElement) ?: return true // error should already be printed
 
-            checkHasHashCodeEquals(targetElement)
             val targetFields = targetElement.enclosedFields.map { TargetField(it) }
             // receiver interface method parameters grouped by method they belong to
             val receiverParameters = getReceiverFields(receiverElement)
@@ -57,6 +56,7 @@ class Processor : AbstractProcessor() {
             if (!checkTargetHasFieldsRequestedByReceiver(targetFields, receiverParameters)) {
                 return true
             }
+            warnIfMissingHashCodeEquals(targetElement, receiverParameters.keys)
 
             val dispatcherImplSuffix = "_Generated"
             val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement, dispatcherImplSuffix)
@@ -428,11 +428,21 @@ class Processor : AbstractProcessor() {
         return typeUtils.asElement(receiverTypeMirror) as TypeElement
     }
 
-    private fun checkHasHashCodeEquals(typeElement: TypeElement) {
-        if (!hasHashCodeEquals(typeElement)) {
-            logger.warning("class \"${typeElement.simpleName}\" does not override equals/hashCode, " +
-                "this will restrict diffing to reference only comparisons")
-        }
+    private fun warnIfMissingHashCodeEquals(
+        targetElement: TypeElement,
+        receiverParameters: Set<TargetField>
+    ) {
+        val elements = mutableListOf(targetElement) +
+            receiverParameters.mapNotNull {
+                typeUtils.asElement(it.type) as? TypeElement
+            }.toSet()
+
+        elements
+            .filterNot { hasHashCodeEquals(it) }
+            .forEach {
+                logger.warning("class \"${it.qualifiedName}\" does not override equals/hashCode, " +
+                    "this will restrict diffing to reference only comparisons")
+            }
     }
 
     // can't use a data class here, TypeMirror equals() isn't good enough,
