@@ -30,7 +30,7 @@ interface ViewStateRenderer {
 ```
 There can be any number of methods in the receiver-interface and they can have arbitrary names, but their argument names must match the names of the `ViewState` fields.
 
-Note how any field can be used in different methods - this will cause the necessary check to be generated, so that method will be called only if all mentioned fields have changed.
+Note how any field can be used in different methods  — this will simply cause the necessary check to be generated, so that method will be called only if all fields mentioned in its arguments have changed.
 
 The `ViewStateRenderer` interface above will cause a _dispatcher_ class to be auto-generated which will look roughly like this:
 
