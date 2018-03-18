@@ -46,7 +46,7 @@ class ViewStateRendererDispatcher(private val receiver: ViewStateRenderer) {
       }
       if (viewState.showProgressBar != previousViewState.showProgressBar 
              || viewState.showError != previuosViewState.showError) {
-          receiver.renderCategories(viewState.showProgressBar, viewState.showError)
+          receiver.renderLoadingErrorState(viewState.showProgressBar, viewState.showError)
       }
    }
 }
