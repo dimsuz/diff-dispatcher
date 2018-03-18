@@ -37,15 +37,15 @@ The `ViewStateRenderer` interface above will cause a _dispatcher_ class to be au
 ```kotlin
 class ViewStateRendererDispatcher(private val receiver: ViewStateRenderer) {
    fun dispatch(viewState: ViewState, previousViewState: ViewState?) {
-      if (viewState.users != previousViewState.users) {
+      if (viewState.users != previousViewState?.users) {
           receiver.renderUsers(viewState.users)
       }
-      if (viewState.categories != previousViewState.categories 
-            || viewState.users != previuosViewState.users) {
+      if (viewState.categories != previousViewState?.categories 
+            || viewState.users != previuosViewState?.users) {
           receiver.renderCategories(viewState.categories, viewState.users)
       }
-      if (viewState.showProgressBar != previousViewState.showProgressBar 
-             || viewState.showError != previuosViewState.showError) {
+      if (viewState.showProgressBar != previousViewState?.showProgressBar 
+             || viewState.showError != previuosViewState?.showError) {
           receiver.renderLoadingErrorState(viewState.showProgressBar, viewState.showError)
       }
    }
@@ -62,7 +62,7 @@ class MyFragmentOrActivity : BaseActivityOrFragment, ViewStateRenderer {
         .build()
     private var previousViewState: ViewState? = null
         
-    fun render(viewState: ViewState, previousViewState: ViewState?) {
+    fun render(viewState: ViewState) {
         renderDispatcher.dispatch(viewState, previousViewState)
         previousViewState = viewState;
     }
