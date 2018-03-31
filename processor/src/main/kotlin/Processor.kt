@@ -1,5 +1,6 @@
 package com.github.dimsuz.diffdispatcher.processor
 
+import com.github.dimsuz.diffdispatcher.DiffDispatcher
 import com.github.dimsuz.diffdispatcher.annotations.DiffElement
 import com.squareup.javapoet.*
 import java.util.*
@@ -63,7 +64,10 @@ class Processor : AbstractProcessor() {
             warnIfMissingHashCodeEquals(targetElement, receiverParameters.keys)
 
             val dispatcherImplSuffix = "_Generated"
-            val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement, dispatcherImplSuffix)
+            val dispatcherTypeSpec = generateDispatcherInterface(
+                targetElement, receiverElement,
+                dispatcherImplSuffix
+            )
             generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters,
                 dispatcherImplSuffix)
         }
@@ -78,8 +82,13 @@ class Processor : AbstractProcessor() {
     ): TypeSpec {
         val targetTypeName = TypeName.get(targetElement.asType())
         val interfaceName = "${targetElement.simpleName}DiffDispatcher"
+        val superInterfaceTypeName = ParameterizedTypeName.get(
+            ClassName.get(DiffDispatcher::class.java),
+            targetTypeName
+            )
         val typeSpec = TypeSpec.interfaceBuilder(interfaceName)
             .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(superInterfaceTypeName)
             .addMethod(MethodSpec.methodBuilder("dispatch")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(ParameterSpec.builder(targetTypeName, "newState")
