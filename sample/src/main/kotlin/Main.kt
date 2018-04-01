@@ -14,7 +14,8 @@ data class UserInfoViewState(
     val age: Int,
     val popularity: Float,
     val likesCheese: Boolean,
-    val isIntelligent: Boolean?
+    val isIntelligent: Boolean?,
+    val isHumble: Boolean
 ) {
     data class Address(
         val street: String,
@@ -35,6 +36,7 @@ interface UserInfoRenderer {
     fun renderPopularity(popularity: Float)
     fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
     fun renderAge(age: Int)
+    fun renderHumbleness(isHumble: Boolean)
 }
 
 class SampleRenderer : UserInfoRenderer {
@@ -70,6 +72,10 @@ class SampleRenderer : UserInfoRenderer {
     override fun renderAge(age: Int) {
         println("render age: age is $age")
     }
+
+    override fun renderHumbleness(isHumble: Boolean) {
+        println("render isHumble: $isHumble")
+    }
 }
 
 
@@ -84,7 +90,8 @@ fun main(args: Array<String>) {
         popularity = 0.7f,
         age = 30,
         likesCheese = true,
-        isIntelligent = null
+        isIntelligent = null,
+        isHumble = true
     )
     val user2 = UserInfoViewState(
         firstName = "Dmitry",
@@ -96,7 +103,8 @@ fun main(args: Array<String>) {
         popularity = 0.8f,
         age = 30,
         likesCheese = true,
-        isIntelligent = true
+        isIntelligent = true,
+        isHumble = false
     )
 
     val dispatcher = UserInfoViewStateDiffDispatcher.Builder()

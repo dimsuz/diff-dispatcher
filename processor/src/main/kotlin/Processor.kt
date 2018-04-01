@@ -402,7 +402,8 @@ class Processor : AbstractProcessor() {
             .filterKeys { receiverField ->
                 // NOTE searching for getters, because this is what ends up in generated code!
                 targetElement.enclosedMethods.none {
-                    it.isPublic && it.simpleName.toString() == receiverField.name.toGetterName()
+                    it.isPublic
+                        && it.isPropertyGetter(receiverField.name)
                         && typeUtils.isSameType(it.returnType, receiverField.type)
                 }
             }
@@ -574,8 +575,8 @@ class Processor : AbstractProcessor() {
     }
 
     private fun Element.findGetter(param: Processor.TargetField): ExecutableElement? {
-        return this.enclosedMethods .find {
-            it.simpleName.toString() == param.name.toGetterName() && typeUtils.isSameType(it.returnType, param.type)
+        return this.enclosedMethods.find {
+            it.isPropertyGetter(param.name) && typeUtils.isSameType(it.returnType, param.type)
         }
     }
 
@@ -608,10 +609,16 @@ private fun MethodSpec.override(): MethodSpec.Builder {
         .addExceptions(this.exceptions)
 }
 
-private fun CharSequence.toGetter(): String {
+private fun CharSequence.toGetter(): CharSequence {
     return "${this.toGetterName()}()"
 }
 
-private fun CharSequence.toGetterName(): String {
-    return "get${this.toString().capitalize()}"
+private fun CharSequence.toGetterName(): CharSequence {
+    return if (this.isGetterName()) this else "get${this.toString().capitalize()}"
+}
+
+private fun CharSequence.isGetterName() = this.startsWith("is") || this.startsWith("get")
+
+private fun ExecutableElement.isPropertyGetter(propertyName: String): Boolean {
+    return this.simpleName.toString() == propertyName.toGetterName()
 }
