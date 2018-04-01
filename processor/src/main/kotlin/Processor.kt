@@ -1,5 +1,6 @@
 package com.github.dimsuz.diffdispatcher.processor
 
+import com.github.dimsuz.diffdispatcher.DiffDispatcher
 import com.github.dimsuz.diffdispatcher.annotations.DiffElement
 import com.squareup.javapoet.*
 import java.util.*
@@ -62,62 +63,35 @@ class Processor : AbstractProcessor() {
             }
             warnIfMissingHashCodeEquals(targetElement, receiverParameters.keys)
 
-            val dispatcherImplSuffix = "_Generated"
-            val dispatcherTypeSpec = generateDispatcherInterface(targetElement, receiverElement, dispatcherImplSuffix)
-            generateDispatcher(dispatcherTypeSpec, targetElement, receiverElement, receiverParameters,
-                dispatcherImplSuffix)
+            generateDispatcher(targetElement, receiverElement, receiverParameters)
         }
 
         return true
     }
 
-    private fun generateDispatcherInterface(
-        targetElement: TypeElement,
-        receiverElement: TypeElement,
-        dispatcherImplSuffix: String
-    ): TypeSpec {
-        val targetTypeName = TypeName.get(targetElement.asType())
-        val interfaceName = "${targetElement.simpleName}DiffDispatcher"
-        val typeSpec = TypeSpec.interfaceBuilder(interfaceName)
-            .addModifiers(Modifier.PUBLIC)
-            .addMethod(MethodSpec.methodBuilder("dispatch")
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .addParameter(ParameterSpec.builder(targetTypeName, "newState")
-                    .addAnnotation(Nonnull::class.java)
-                    .build())
-                .addParameter(ParameterSpec.builder(targetTypeName, "previousState")
-                    .addAnnotation(Nullable::class.java)
-                    .build())
-                .build()
-            )
-            .addType(generateDispatcherBuilder(interfaceName, receiverElement, dispatcherImplSuffix))
-            .build()
-
-        JavaFile.builder(targetElement.enclosingPackageName, typeSpec)
-            .build()
-            .writeTo(filer)
-        return typeSpec
-    }
-
     private fun generateDispatcher(
-        superInterface: TypeSpec,
         targetElement: TypeElement,
         receiverElement: TypeElement,
-        receiverParameters: Map<TargetField, List<ExecutableElement>>,
-        dispatcherImplSuffix: String
+        receiverParameters: Map<TargetField, List<ExecutableElement>>
     ): TypeSpec {
+        val interfaceName = "${targetElement.simpleName}DiffDispatcher"
         val packageName = targetElement.enclosingPackageName
-        val dispatchMethodSpec = superInterface.methodSpecs.single()
+        val dispatchMethodSpec = generateDispatchMethodSpec(targetElement)
         val constructorSpec = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(TypeName.get(receiverElement.asType()), "receiver")
             .addStatement("this.\$N = \$N", "receiver", "receiver")
             .build()
 
-        val typeSpec = TypeSpec.classBuilder("${superInterface.name}$dispatcherImplSuffix")
+        val superInterfaceTypeName = ParameterizedTypeName.get(
+            ClassName.get(DiffDispatcher::class.java),
+            TypeName.get(targetElement.asType())
+        )
+
+
+        val typeSpec = TypeSpec.classBuilder(interfaceName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addSuperinterface(
-                ClassName.get(packageName, superInterface.name))
+            .addSuperinterface(superInterfaceTypeName)
             .addField(TypeName.get(receiverElement.asType()), "receiver", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(constructorSpec)
             .addMethod(dispatchMethodSpec.override()
@@ -128,6 +102,7 @@ class Processor : AbstractProcessor() {
                     receiverParameters
                 )).build())
             .addMethods(generateEqualsHelpers(receiverParameters.keys))
+            .addType(generateDispatcherBuilder(interfaceName, receiverElement))
             .build()
 
         JavaFile.builder(packageName, typeSpec)
@@ -137,10 +112,22 @@ class Processor : AbstractProcessor() {
         return typeSpec
     }
 
+    private fun generateDispatchMethodSpec(targetElement: TypeElement): MethodSpec {
+        val targetTypeName = TypeName.get(targetElement.asType())
+        return  MethodSpec.methodBuilder("dispatch")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(ParameterSpec.builder(targetTypeName, "newState")
+                .addAnnotation(Nonnull::class.java)
+                .build())
+            .addParameter(ParameterSpec.builder(targetTypeName, "previousState")
+                .addAnnotation(Nullable::class.java)
+                .build())
+            .build()
+    }
+
     private fun generateDispatcherBuilder(
         interfaceName: String,
-        receiverElement: TypeElement,
-        dispatcherImplSuffix: String
+        receiverElement: TypeElement
     ): TypeSpec {
         val builderClassName = "Builder"
         val receiverParamName = "receiver"
@@ -168,7 +155,7 @@ class Processor : AbstractProcessor() {
                     IllegalStateException::class.java,
                     "no \"$receiverParamName\" specified, use \"$receiverSetterName\" Builder's method to set it")
                 .endControlFlow()
-                .addStatement("return new \$N\$N(this.\$N)", interfaceName, dispatcherImplSuffix, receiverParamName)
+                .addStatement("return new \$N(this.\$N)", interfaceName, receiverParamName)
                 .build())
         return typeSpec.build()
     }
