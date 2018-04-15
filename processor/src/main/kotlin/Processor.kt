@@ -401,10 +401,14 @@ class Processor : AbstractProcessor() {
         val missing = receiverParameters
             .filterKeys { receiverField ->
                 // NOTE searching for getters, because this is what ends up in generated code!
-                targetElement.enclosedMethods.none {
-                    it.isPublic
-                        && it.isPropertyGetter(receiverField.name)
-                        && typeUtils.isSameType(it.returnType, receiverField.type)
+                targetElement.enclosedMethods.none { method ->
+                    method.isPublic
+                        && method.isPropertyGetter(receiverField.name)
+                        // NOTE: it is not enough to just check isSameType(method.returnType, receiverField.type)
+                        // here, because this introduces problems with generic state fields
+                        // See NOTE_GENERIC_STATE_FIELDS below
+                        && typeUtils.isSameType(typeUtils.erasure(method.returnType), typeUtils.erasure(receiverField.type))
+                        && typeUtils.isAssignable(method.returnType, receiverField.type)
                 }
             }
 
@@ -622,3 +626,22 @@ private fun CharSequence.isGetterName() = this.startsWith("is") || this.startsWi
 private fun ExecutableElement.isPropertyGetter(propertyName: String): Boolean {
     return this.simpleName.toString() == propertyName.toGetterName()
 }
+
+// NOTE_GENERIC_STATE_FIELDS
+//
+// Consider this sample:
+//
+// interface DataField { ... }
+//
+// @DiffElement(diffReceiver = Renderer::class)
+// data class State(fields: List<DataField>)
+//
+// interface Renderer {
+//   fun renderFields(fields: List<DataField>)
+// }
+//
+// In this case Kotlin compiler will generate `renderFields` method with the `List<? extends DataField>` type.
+// This happens only when DataField is an abstract class or interface.
+// But `State.fields` type will still be `List<DataField>`
+//
+// This forces TypeUtils.isSameType() to return false (as also stated in its apidoc)

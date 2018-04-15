@@ -15,7 +15,8 @@ data class UserInfoViewState(
     val popularity: Float,
     val likesCheese: Boolean,
     val isIntelligent: Boolean?,
-    val isHumble: Boolean
+    val isHumble: Boolean,
+    val favoriteShapes: List<Shape>
 ) {
     data class Address(
         val street: String,
@@ -25,6 +26,11 @@ data class UserInfoViewState(
         val name: String,
         val tags: List<String>
     )
+}
+
+sealed class Shape {
+    data class Square(val size: Int): Shape()
+    data class Rectangle(val width: Int, val height: Int): Shape()
 }
 
 interface UserInfoRenderer {
@@ -37,6 +43,7 @@ interface UserInfoRenderer {
     fun renderAgeAndCheesePreference(age: Int, likesCheese: Boolean)
     fun renderAge(age: Int)
     fun renderHumbleness(isHumble: Boolean)
+    fun renderFavoriteShapes(favoriteShapes: List<Shape>)
 }
 
 class SampleRenderer : UserInfoRenderer {
@@ -76,6 +83,11 @@ class SampleRenderer : UserInfoRenderer {
     override fun renderHumbleness(isHumble: Boolean) {
         println("render isHumble: $isHumble")
     }
+
+    override fun renderFavoriteShapes(favoriteShapes: List<Shape>) {
+        println("render favorite shapes: $favoriteShapes")
+    }
+
 }
 
 
@@ -91,7 +103,8 @@ fun main(args: Array<String>) {
         age = 30,
         likesCheese = true,
         isIntelligent = null,
-        isHumble = true
+        isHumble = true,
+        favoriteShapes = listOf(Shape.Square(10))
     )
     val user2 = UserInfoViewState(
         firstName = "Dmitry",
@@ -104,7 +117,8 @@ fun main(args: Array<String>) {
         age = 30,
         likesCheese = true,
         isIntelligent = true,
-        isHumble = false
+        isHumble = false,
+        favoriteShapes = listOf(Shape.Rectangle(1, 2))
     )
 
     val dispatcher = UserInfoViewStateDiffDispatcher.Builder()
