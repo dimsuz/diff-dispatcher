@@ -2,6 +2,12 @@ package com.github.dimsuz.diffdispatcher.sample
 
 import com.github.dimsuz.diffdispatcher.annotations.DiffElement
 import com.github.dimsuz.diffdispatcher.sample.UserInfoViewState.Interest
+import java.lang.RuntimeException
+
+enum class ThingKind {
+    Fluffy,
+    Blushy
+}
 
 @DiffElement(diffReceiver = UserInfoRenderer::class)
 data class UserInfoViewState(
@@ -20,7 +26,10 @@ data class UserInfoViewState(
     // verifies that processor doesn't improperly treat this as an is-getter
     val issueCount: Int,
     // verifies that processor doesn't improperly treat this as an get-getter
-    val gettyImageUrl: String
+    val gettyImageUrl: String,
+    val thingKind: ThingKind,
+    // enum should give no warning, Throwable should print a warning about missing equals/hashCode
+    val genericObject: Throwable
 ) {
     data class Address(
         val street: String,
@@ -49,6 +58,7 @@ interface UserInfoRenderer {
     fun renderHumbleness(isHumble: Boolean)
     fun renderFavoriteShapes(favoriteShapes: List<Shape>)
     fun renderIssueCount(issueCount: Int, gettyImageUrl: String)
+    fun renderEnumOrObject(thingKind: ThingKind, genericObject: Throwable)
 }
 
 class SampleRenderer : UserInfoRenderer {
@@ -96,6 +106,10 @@ class SampleRenderer : UserInfoRenderer {
     override fun renderIssueCount(issueCount: Int, gettyImageUrl: String) {
         println("render issue count: $issueCount, $gettyImageUrl")
     }
+
+    override fun renderEnumOrObject(thingKind: ThingKind, genericObject: Throwable) {
+        println("render thing kind: $thingKind")
+    }
 }
 
 
@@ -114,7 +128,9 @@ fun main(args: Array<String>) {
         isHumble = true,
         favoriteShapes = listOf(Shape.Square(10)),
         issueCount = 0,
-        gettyImageUrl = ""
+        gettyImageUrl = "",
+        thingKind = ThingKind.Blushy,
+        genericObject = RuntimeException()
     )
     val user2 = UserInfoViewState(
         firstName = "Dmitry",
@@ -130,7 +146,9 @@ fun main(args: Array<String>) {
         isHumble = false,
         favoriteShapes = listOf(Shape.Rectangle(1, 2)),
         issueCount = 1,
-        gettyImageUrl = "full"
+        gettyImageUrl = "full",
+        thingKind = ThingKind.Fluffy,
+        genericObject = RuntimeException()
     )
 
     val dispatcher = UserInfoViewStateDiffDispatcher.Builder()

@@ -593,6 +593,7 @@ class Processor : AbstractProcessor() {
 }
 
 private fun hasHashCodeEquals(typeElement: TypeElement): Boolean {
+    if (typeElement.kind == ElementKind.ENUM) return true
     val enclosedElements = typeElement.enclosedElements
     return enclosedElements.any { it.kind == ElementKind.METHOD && it.simpleName.toString() == "equals" }
         && enclosedElements.any { it.kind == ElementKind.METHOD && it.simpleName.toString() == "hashCode" }
