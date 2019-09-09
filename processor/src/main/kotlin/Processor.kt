@@ -621,7 +621,10 @@ private fun CharSequence.toGetterName(): CharSequence {
     return if (this.isGetterName()) this else "get${this.toString().capitalize()}"
 }
 
-private fun CharSequence.isGetterName() = this.startsWith("is") || this.startsWith("get")
+private fun CharSequence.isGetterName(): Boolean {
+    return (this.startsWith("is") && this.removePrefix("is").firstOrNull()?.isUpperCase() == true)
+        || (this.startsWith("get") && this.removePrefix("get").firstOrNull()?.isUpperCase() == true)
+}
 
 private fun ExecutableElement.isPropertyGetter(propertyName: String): Boolean {
     return this.simpleName.toString() == propertyName.toGetterName()

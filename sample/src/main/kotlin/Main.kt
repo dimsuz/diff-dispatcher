@@ -16,7 +16,11 @@ data class UserInfoViewState(
     val likesCheese: Boolean,
     val isIntelligent: Boolean?,
     val isHumble: Boolean,
-    val favoriteShapes: List<Shape>
+    val favoriteShapes: List<Shape>,
+    // verifies that processor doesn't improperly treat this as an is-getter
+    val issueCount: Int,
+    // verifies that processor doesn't improperly treat this as an get-getter
+    val gettyImageUrl: String
 ) {
     data class Address(
         val street: String,
@@ -44,6 +48,7 @@ interface UserInfoRenderer {
     fun renderAge(age: Int)
     fun renderHumbleness(isHumble: Boolean)
     fun renderFavoriteShapes(favoriteShapes: List<Shape>)
+    fun renderIssueCount(issueCount: Int, gettyImageUrl: String)
 }
 
 class SampleRenderer : UserInfoRenderer {
@@ -88,6 +93,9 @@ class SampleRenderer : UserInfoRenderer {
         println("render favorite shapes: $favoriteShapes")
     }
 
+    override fun renderIssueCount(issueCount: Int, gettyImageUrl: String) {
+        println("render issue count: $issueCount, $gettyImageUrl")
+    }
 }
 
 
@@ -104,7 +112,9 @@ fun main(args: Array<String>) {
         likesCheese = true,
         isIntelligent = null,
         isHumble = true,
-        favoriteShapes = listOf(Shape.Square(10))
+        favoriteShapes = listOf(Shape.Square(10)),
+        issueCount = 0,
+        gettyImageUrl = ""
     )
     val user2 = UserInfoViewState(
         firstName = "Dmitry",
@@ -118,7 +128,9 @@ fun main(args: Array<String>) {
         likesCheese = true,
         isIntelligent = true,
         isHumble = false,
-        favoriteShapes = listOf(Shape.Rectangle(1, 2))
+        favoriteShapes = listOf(Shape.Rectangle(1, 2)),
+        issueCount = 1,
+        gettyImageUrl = "full"
     )
 
     val dispatcher = UserInfoViewStateDiffDispatcher.Builder()
