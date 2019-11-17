@@ -1,6 +1,6 @@
 package com.github.dimsuz.diffdispatcher.sample
 
-import com.github.dimsuz.diffdispatcher.annotations.DiffElement
+import com.github.dimsuz.diffdispatcher.DiffElement
 import com.github.dimsuz.diffdispatcher.sample.UserInfoViewState.Interest
 import java.lang.RuntimeException
 

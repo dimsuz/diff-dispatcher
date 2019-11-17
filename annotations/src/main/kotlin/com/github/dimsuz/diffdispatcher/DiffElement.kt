@@ -1,4 +1,4 @@
-package com.github.dimsuz.diffdispatcher.annotations
+package com.github.dimsuz.diffdispatcher
 
 import kotlin.reflect.KClass
 
